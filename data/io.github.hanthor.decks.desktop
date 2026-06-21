@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Decks
+GenericName=Presentation
+Comment=A GNOME presentation app
+Exec=decks
+Icon=io.github.hanthor.decks
+Terminal=false
+Type=Application
+Categories=GNOME;GTK;Office;Presentation;
+StartupNotify=true
