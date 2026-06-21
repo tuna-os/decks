@@ -19,6 +19,17 @@
     ],
     "modules": [
         {
+            "name": "python3-deps",
+            "buildsystem": "simple",
+            "build-options": {
+                "build-args": [ "--share=network" ]
+            },
+            "build-commands": [
+                "pip3 install --prefix=${FLATPAK_DEST} --no-warn-script-location python-pptx odfpy"
+            ],
+            "comment": "Network build for the himachal pipeline; Flathub -> vendored wheels."
+        },
+        {
             "name": "decks",
             "buildsystem": "meson",
             "sources": [

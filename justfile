@@ -91,5 +91,22 @@ presenttest: build
         echo "PRESENTTEST: PASS (Reveal deck built from Fabric slides)"
     else echo "PRESENTTEST: FAIL"; exit 1; fi
 
+# Headless pptx + odp deck round-trip (decks #5, #6, #8): write a 2-slide deck
+# with a text box, read it back, assert text + slide count survive.
+decktest: build
+    #!/usr/bin/env bash
+    set -uo pipefail
+    flatpak kill {{app_id}} 2>/dev/null || true; sleep 1
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    export WAYLAND_DISPLAY="$(ls "$XDG_RUNTIME_DIR" 2>/dev/null | grep -m1 -E '^wayland-[0-9]+$' || echo wayland-0)"
+    d="$HOME/.cache/decks-decktest"; rm -rf "$d"; mkdir -p "$d"
+    timeout 9 flatpak run --env=PYTHONUNBUFFERED=1 --filesystem="$d" \
+        --env=DECKS_DECKTEST="$d" {{app_id}} >"$d/log" 2>&1 &
+    pid=$!; sleep 7; flatpak kill {{app_id}} 2>/dev/null; kill "$pid" 2>/dev/null || true
+    echo "--- console ---"; grep decktest "$d/log" || cat "$d/log"
+    if grep -q "decktest result: PASS" "$d/log"; then
+        echo "DECKTEST: PASS (pptx + odp round-trip text+slides)"; rm -rf "$d"
+    else echo "DECKTEST: FAIL"; exit 1; fi
+
 clean:
     rm -rf subprojects/suite-common "$HOME/.cache/decks-flatpak"

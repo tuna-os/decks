@@ -9,9 +9,10 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 
-from gi.repository import Gtk, Adw, GLib  # noqa: E402
+from gi.repository import Gtk, Gio, Adw, GLib  # noqa: E402
 from suite_common.window import SuiteWindow  # noqa: E402
 from suite_common.webview import SuiteWebView, build_document  # noqa: E402
+from . import fileio  # noqa: E402
 
 VENDOR_ASSETS = [
     ('css', 'reveal.css'),
@@ -33,6 +34,7 @@ class DecksWindow(SuiteWindow):
         self._pending = None      # index to switch to after saving current
         self._present_pending = False
         self._presenting = False
+        self._save_deck_path = None
 
         self.webview = SuiteWebView(on_message=self._on_message)
 
@@ -75,6 +77,15 @@ class DecksWindow(SuiteWindow):
         split.set_content(self.webview)
         split.set_max_sidebar_width(260)
         self.set_main_content(split)
+
+        open_btn = Gtk.Button(label='Open')
+        open_btn.connect('clicked', lambda *_: self.open_deck())
+        self.header_bar.pack_start(open_btn)
+
+        save_btn = Gtk.Button(icon_name='document-save-symbolic')
+        save_btn.set_tooltip_text('Save')
+        save_btn.connect('clicked', lambda *_: self.save_deck())
+        self.header_bar.pack_start(save_btn)
 
         present_btn = Gtk.Button(icon_name='view-fullscreen-symbolic')
         present_btn.set_tooltip_text('Present')
@@ -156,6 +167,46 @@ class DecksWindow(SuiteWindow):
         self._present_pending = True
         self.webview.send('getSlide', None)
 
+    # ----- deck file I/O ----------------------------------------------------
+
+    def open_deck(self):
+        dialog = Gtk.FileDialog(title='Open Presentation')
+        flt = Gtk.FileFilter()
+        flt.set_name('Presentations')
+        flt.add_pattern('*.pptx')
+        flt.add_pattern('*.odp')
+        store = Gio.ListStore.new(Gtk.FileFilter)
+        store.append(flt)
+        dialog.set_filters(store)
+        dialog.open(self, None, self._on_open_deck)
+
+    def _on_open_deck(self, dialog, result):
+        try:
+            gfile = dialog.open_finish(result)
+        except GLib.Error:
+            return
+        try:
+            self.slides = fileio.read_deck(gfile.get_path()) or [None]
+        except Exception as exc:  # noqa: BLE001
+            print('[decks] open error:', exc, flush=True)
+            return
+        self.current = 0
+        self._refresh_sidebar()
+        self.webview.send('loadSlide', self.slides[0])
+
+    def save_deck(self):
+        dialog = Gtk.FileDialog(title='Save Presentation')
+        dialog.set_initial_name('Untitled.pptx')
+        dialog.save(self, None, self._on_save_deck)
+
+    def _on_save_deck(self, dialog, result):
+        try:
+            gfile = dialog.save_finish(result)
+        except GLib.Error:
+            return
+        self._save_deck_path = gfile.get_path()
+        self.webview.send('getSlide', None)   # save current slide first, then write
+
     def _on_row_selected(self, listbox, row):
         if row is None:
             return
@@ -183,12 +234,44 @@ class DecksWindow(SuiteWindow):
                 self._run_selftest()
             if os.environ.get('DECKS_PRESENT'):
                 GLib.timeout_add(800, lambda: (self.present(), False)[1])
+            if os.environ.get('DECKS_DECKTEST'):
+                self._run_decktest()
+
+    def _run_decktest(self):
+        base = os.environ['DECKS_DECKTEST']
+        slide = {'version': '5.5.2', 'background': '#ffffff', 'objects': [
+            {'type': 'i-text', 'text': 'HelloDeck', 'left': 100, 'top': 120,
+             'width': 400, 'height': 60, 'fontSize': 32}]}
+        results = []
+        for ext in ('pptx', 'odp'):
+            path = os.path.join(base, 'rt.' + ext)
+            try:
+                fileio.write_deck(path, [slide, slide])
+                back = fileio.read_deck(path)
+                texts = [o.get('text') for s in back for o in s.get('objects', [])
+                         if o.get('type') == 'i-text']
+                ok = ('HelloDeck' in texts) and len(back) == 2
+            except Exception as exc:  # noqa: BLE001
+                ok = False
+                texts = [repr(exc)]
+            print(f'[decks] decktest {ext}: slides={len(back) if ok else "?"} '
+                  f'texts={texts} -> {"OK" if ok else "FAIL"}', flush=True)
+            results.append(ok)
+        print('[decks] decktest result:', 'PASS' if all(results) else 'FAIL', flush=True)
         elif kind == 'slide':
             # Store the just-saved current slide, then dispatch.
             self.slides[self.current] = payload.get('data')
             if self._selftest_target:
                 self._write_selftest(payload.get('data'))
-            if self._present_pending:
+            if self._save_deck_path:
+                path = self._save_deck_path
+                self._save_deck_path = None
+                try:
+                    fileio.write_deck(path, self.slides)
+                    print('[decks] saved', os.path.basename(path), flush=True)
+                except Exception as exc:  # noqa: BLE001
+                    print('[decks] save error:', exc, flush=True)
+            elif self._present_pending:
                 self._present_pending = False
                 self._presenting = True
                 self.fullscreen()
