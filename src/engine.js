@@ -36,6 +36,55 @@
     post({ type: 'ready', engine: 'fabric', reveal: (typeof Reveal !== 'undefined') });
   }
 
+  function renderSlideToImage(json, cb) {
+    var el = document.createElement('canvas');
+    el.width = SLIDE_W; el.height = SLIDE_H;
+    var sc = new fabric.StaticCanvas(el, { backgroundColor: '#ffffff' });
+    if (json && json.objects) {
+      sc.loadFromJSON(json, function () { sc.renderAll(); cb(sc.toDataURL()); });
+    } else {
+      sc.renderAll(); cb(sc.toDataURL());
+    }
+  }
+
+  function present(slides) {
+    var editor = document.getElementById('editor');
+    var revealEl = document.getElementById('reveal');
+    var slidesDiv = revealEl.querySelector('.slides');
+    slidesDiv.innerHTML = '';
+    if (!slides || !slides.length) { slides = [canvas.toJSON()]; }
+    var imgs = new Array(slides.length);
+    var pending = slides.length;
+    slides.forEach(function (s, i) {
+      renderSlideToImage(s, function (url) {
+        imgs[i] = url;
+        if (--pending === 0) { build(imgs); }
+      });
+    });
+    function build(urls) {
+      urls.forEach(function (u) {
+        var sec = document.createElement('section');
+        var im = document.createElement('img');
+        im.src = u; im.style.width = '100%'; im.style.height = '100%'; im.style.objectFit = 'contain';
+        sec.appendChild(im); slidesDiv.appendChild(sec);
+      });
+      editor.style.display = 'none';
+      revealEl.style.display = 'block';
+      if (window.__reveal) { window.__reveal.sync(); window.__reveal.slide(0); }
+      else { window.__reveal = new Reveal(revealEl, { width: SLIDE_W, height: SLIDE_H }); window.__reveal.initialize(); }
+      console.log('present: ' + urls.length + ' slides');
+      post({ type: 'presenting', slides: urls.length });
+    }
+  }
+
+  function edit() {
+    var editor = document.getElementById('editor');
+    var revealEl = document.getElementById('reveal');
+    revealEl.style.display = 'none';
+    editor.style.display = 'flex';
+    console.log('edit mode');
+  }
+
   // Python -> JS
   window.bridgeReceive = function (name, data) {
     if (name === 'loadSlide') {
@@ -47,6 +96,10 @@
       canvas.add(sampleText()); canvas.renderAll(); post({ type: 'changed' });
     } else if (name === 'newSlide') {
       canvas.clear(); canvas.backgroundColor = '#ffffff'; canvas.add(sampleText()); canvas.renderAll();
+    } else if (name === 'present') {
+      present(data);
+    } else if (name === 'edit') {
+      edit();
     }
   };
 

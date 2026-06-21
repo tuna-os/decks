@@ -31,6 +31,8 @@ class DecksWindow(SuiteWindow):
         self.slides = [None]      # list of fabric JSON (None = blank)
         self.current = 0
         self._pending = None      # index to switch to after saving current
+        self._present_pending = False
+        self._presenting = False
 
         self.webview = SuiteWebView(on_message=self._on_message)
 
@@ -50,13 +52,22 @@ class DecksWindow(SuiteWindow):
         scroller.set_child(self.slide_list)
         scroller.set_vexpand(True)
 
-        add_btn = Gtk.Button(label='Add Slide', margin_top=6, margin_bottom=6,
-                             margin_start=6, margin_end=6)
-        add_btn.connect('clicked', lambda *_: self.add_slide())
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4,
+                           margin_top=6, margin_bottom=6, margin_start=6, margin_end=6)
+        for icon, tip, cb in (
+            ('list-add-symbolic', 'Add slide', lambda *_: self.add_slide()),
+            ('list-remove-symbolic', 'Delete slide', lambda *_: self.delete_slide()),
+            ('go-up-symbolic', 'Move up', lambda *_: self.move_slide(-1)),
+            ('go-down-symbolic', 'Move down', lambda *_: self.move_slide(1)),
+        ):
+            btn = Gtk.Button(icon_name=icon)
+            btn.set_tooltip_text(tip)
+            btn.connect('clicked', cb)
+            controls.append(btn)
 
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         sidebar.append(scroller)
-        sidebar.append(add_btn)
+        sidebar.append(controls)
         sidebar.set_size_request(200, -1)
 
         split = Adw.OverlaySplitView()
@@ -67,7 +78,7 @@ class DecksWindow(SuiteWindow):
 
         present_btn = Gtk.Button(icon_name='view-fullscreen-symbolic')
         present_btn.set_tooltip_text('Present')
-        present_btn.connect('clicked', lambda *_: self.webview.send('present', None))
+        present_btn.connect('clicked', lambda *_: self.present())
         self.header_bar.pack_start(present_btn)
 
         add_text_btn = Gtk.Button(icon_name='insert-text-symbolic')
@@ -75,14 +86,33 @@ class DecksWindow(SuiteWindow):
         add_text_btn.connect('clicked', lambda *_: self.webview.send('addText', None))
         self.header_bar.pack_start(add_text_btn)
 
+        # Escape exits present mode.
+        keys = Gtk.EventControllerKey()
+        keys.connect('key-pressed', self._on_key)
+        self.add_controller(keys)
+
+    def _on_key(self, controller, keyval, keycode, state):
+        from gi.repository import Gdk
+        if keyval == Gdk.KEY_Escape and self._presenting:
+            self._presenting = False
+            self.unfullscreen()
+            self.webview.send('edit', None)
+            return True
+        return False
+
     def _build_html(self):
         vendor_dir = os.path.join(self._moduledir, 'vendor')
         with open(os.path.join(self._moduledir, 'engine.js'), encoding='utf-8') as fh:
             engine = fh.read()
-        body = ('<div style="display:flex;justify-content:center;align-items:center;'
-                'height:100vh;background:#dcdcdc">'
-                '<canvas id="canvas" width="960" height="540" '
-                'style="box-shadow:0 0 12px rgba(0,0,0,0.3)"></canvas></div>')
+        body = (
+            '<div id="editor" style="display:flex;justify-content:center;'
+            'align-items:center;height:100vh;background:#dcdcdc">'
+            '<canvas id="canvas" width="960" height="540" '
+            'style="box-shadow:0 0 12px rgba(0,0,0,0.3)"></canvas></div>'
+            '<div id="reveal" class="reveal" '
+            'style="display:none;position:fixed;inset:0;background:#000">'
+            '<div class="slides"></div></div>'
+        )
         head_extra = f'<script>{engine}</script>'
         return build_document(vendor_dir, VENDOR_ASSETS, body, head_extra)
 
@@ -103,6 +133,28 @@ class DecksWindow(SuiteWindow):
         self._pending = len(self.slides) - 1
         self.webview.send('getSlide', None)
         self._refresh_sidebar()
+
+    def delete_slide(self):
+        if len(self.slides) <= 1:
+            return
+        del self.slides[self.current]
+        self.current = min(self.current, len(self.slides) - 1)
+        self._refresh_sidebar()
+        self.webview.send('loadSlide', self.slides[self.current])
+
+    def move_slide(self, delta):
+        target = self.current + delta
+        if target < 0 or target >= len(self.slides):
+            return
+        self.slides[self.current], self.slides[target] = \
+            self.slides[target], self.slides[self.current]
+        self.current = target
+        self._refresh_sidebar()
+
+    def present(self):
+        # Save the current slide, then present all of them fullscreen.
+        self._present_pending = True
+        self.webview.send('getSlide', None)
 
     def _on_row_selected(self, listbox, row):
         if row is None:
@@ -129,12 +181,22 @@ class DecksWindow(SuiteWindow):
                   'reveal=', payload.get('reveal'), flush=True)
             if self._selftest:
                 self._run_selftest()
+            if os.environ.get('DECKS_PRESENT'):
+                GLib.timeout_add(800, lambda: (self.present(), False)[1])
         elif kind == 'slide':
-            # Store the just-saved current slide, then complete a pending switch.
+            # Store the just-saved current slide, then dispatch.
             self.slides[self.current] = payload.get('data')
             if self._selftest_target:
                 self._write_selftest(payload.get('data'))
-            self._switch_to_pending()
+            if self._present_pending:
+                self._present_pending = False
+                self._presenting = True
+                self.fullscreen()
+                self.webview.send('present', self.slides)
+            else:
+                self._switch_to_pending()
+        elif kind == 'presenting':
+            print('[decks] presenting', payload.get('slides'), 'slides', flush=True)
         elif kind == 'changed':
             pass
 

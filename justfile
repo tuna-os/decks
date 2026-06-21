@@ -76,5 +76,20 @@ slidetest: build
         echo "SLIDETEST: PASS (Fabric serialised text box round-tripped)"; rm -rf "$d"
     else echo "SLIDETEST: FAIL"; exit 1; fi
 
+# Headless present-mode test (decks #4): trigger Present and assert Reveal builds.
+presenttest: build
+    #!/usr/bin/env bash
+    set -uo pipefail
+    flatpak kill {{app_id}} 2>/dev/null || true; sleep 1
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    export WAYLAND_DISPLAY="$(ls "$XDG_RUNTIME_DIR" 2>/dev/null | grep -m1 -E '^wayland-[0-9]+$' || echo wayland-0)"
+    log=$(mktemp)
+    timeout 9 flatpak run --env=PYTHONUNBUFFERED=1 --env=DECKS_PRESENT=1 {{app_id}} >"$log" 2>&1 &
+    pid=$!; sleep 7; flatpak kill {{app_id}} 2>/dev/null; kill "$pid" 2>/dev/null || true
+    echo "--- console ---"; cat "$log"
+    if grep -q "present: " "$log" && grep -q "\[decks\] presenting" "$log"; then
+        echo "PRESENTTEST: PASS (Reveal deck built from Fabric slides)"
+    else echo "PRESENTTEST: FAIL"; exit 1; fi
+
 clean:
     rm -rf subprojects/suite-common "$HOME/.cache/decks-flatpak"
