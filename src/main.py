@@ -69,22 +69,15 @@ class DecksApplication(SuiteApplication):
     def _on_go_slide(self, action, *a):
         name = action.get_name()
         if name == 'first-slide':
-            self._call_win('go_first_slide')
+            self._call_win('webview_send', 'presentKey', 'first')
         elif name == 'last-slide':
-            self._call_win('go_last_slide')
+            self._call_win('webview_send', 'presentKey', 'last')
 
     def _on_canvas_undo(self, *a):
         self._call_win('webview_send', 'undo', None)
 
     def _on_canvas_redo(self, *a):
         self._call_win('webview_send', 'redo', None)
-
-    def _on_go_slide(self, action, *a):
-        name = action.get_name()
-        if name == 'first-slide':
-            self._call_win('webview_send', 'presentKey', 'first')
-        elif name == 'last-slide':
-            self._call_win('webview_send', 'presentKey', 'last')
 
     def _on_present_key(self, action, *a):
         name = action.get_name()
