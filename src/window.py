@@ -76,6 +76,19 @@ class DecksWindow(SuiteWindow):
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         sidebar.append(scroller)
         sidebar.append(controls)
+
+        # Transition dropdown for the selected slide
+        self.transition_combo = Gtk.DropDown.new_from_strings(
+            ['None', 'Fade', 'Slide', 'Convex', 'Concave', 'Zoom'])
+        self.transition_combo.set_tooltip_text('Slide transition')
+        self.transition_combo.set_selected(0)
+        self.transition_combo.connect('notify::selected', self._on_transition_changed)
+        tbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4,
+                      margin_start=6, margin_end=6, margin_bottom=4)
+        tbox.append(Gtk.Label(label='Transition:', css_classes=['caption']))
+        tbox.append(self.transition_combo)
+        sidebar.append(tbox)
+
         sidebar.set_size_request(200, -1)
 
         split = Adw.OverlaySplitView()
@@ -212,7 +225,6 @@ class DecksWindow(SuiteWindow):
         self._refresh_sidebar()
 
     def present(self):
-        # Save the current slide, then present all of them fullscreen.
         self._present_pending = True
         self.webview.send('getSlide', None)
 
@@ -315,6 +327,14 @@ class DecksWindow(SuiteWindow):
         self._pending = None
         self.webview.send('loadSlide', self.slides[self.current])
 
+    def _on_transition_changed(self, dropdown, _pspec):
+        """Store transition for the current slide."""
+        transitions = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom']
+        idx = dropdown.get_selected()
+        if 0 <= idx < len(transitions):
+            self._slide_transitions = getattr(self, '_slide_transitions', {})
+            self._slide_transitions[self.current] = transitions[idx]
+
     # ----- bridge -----------------------------------------------------------
 
     def _on_message(self, payload):
@@ -352,7 +372,13 @@ class DecksWindow(SuiteWindow):
                 self._present_pending = False
                 self._presenting = True
                 self.fullscreen()
-                self.webview.send('present', self.slides)
+                transitions = getattr(self, '_slide_transitions', {})
+                self.webview.send('present', {
+                    'slides': self.slides,
+                    'transitions': [
+                        transitions.get(i, 'none') for i in range(len(self.slides))
+                    ]
+                })
             else:
                 self._switch_to_pending()
         elif kind == 'rendered':

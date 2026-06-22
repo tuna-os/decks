@@ -29,6 +29,10 @@ class DecksApplication(SuiteApplication):
         self._add_action('first-slide', self._on_go_slide, ['Home'])
         self._add_action('last-slide', self._on_go_slide, ['End'])
 
+        # ── Edit shortcuts (canvas undo/redo) ──
+        self._add_action('canvas-undo', self._on_canvas_undo, ['<primary>z'])
+        self._add_action('canvas-redo', self._on_canvas_redo, ['<primary><shift>z'])
+
         # Present-mode shortcuts (handled by the window's key handler)
         self._add_action('present-blank', self._on_present_key)
         self._add_action('present-white', self._on_present_key)
@@ -43,6 +47,10 @@ class DecksApplication(SuiteApplication):
             ('End', _('Last Slide')),
             ('B', _('Blank Screen (present mode)')),
             ('W', _('White Screen (present mode)')),
+        ]
+        self.shortcuts[_('Edit')] = [
+            ('<primary>z', _('Undo')),
+            ('<primary><shift>z', _('Redo')),
         ]
 
     def _on_add_slide(self, *a):
@@ -65,7 +73,11 @@ class DecksApplication(SuiteApplication):
         elif name == 'last-slide':
             self._call_win('go_last_slide')
 
-    def _on_present_key(self, action, *a):
+    def _on_canvas_undo(self, *a):
+        self._call_win('webview_send', 'undo', None)
+
+    def _on_canvas_redo(self, *a):
+        self._call_win('webview_send', 'redo', None)
         name = action.get_name()
         js = None
         if name == 'present-blank':

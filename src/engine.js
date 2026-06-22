@@ -16,6 +16,33 @@
 
   var canvas = null;
 
+  // ── Undo/redo stack ─────────────────────────────────────────────
+  var undoStack = [];
+  var redoStack = [];
+  var MAX_UNDO = 30;
+
+  function saveState() {
+    undoStack.push(JSON.stringify(canvas.toJSON()));
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    redoStack = [];
+  }
+
+  function undo() {
+    if (undoStack.length === 0) return;
+    redoStack.push(JSON.stringify(canvas.toJSON()));
+    var state = undoStack.pop();
+    canvas.loadFromJSON(JSON.parse(state), function () { canvas.renderAll(); });
+    post({ type: 'changed' });
+  }
+
+  function redo() {
+    if (redoStack.length === 0) return;
+    undoStack.push(JSON.stringify(canvas.toJSON()));
+    var state = redoStack.pop();
+    canvas.loadFromJSON(JSON.parse(state), function () { canvas.renderAll(); });
+    post({ type: 'changed' });
+  }
+
   function sampleText() {
     return new fabric.IText('Double-click to edit', {
       left: 80, top: 220, fontSize: 44, fontFamily: 'sans-serif', fill: '#202020'
@@ -27,8 +54,9 @@
     canvas.setWidth(SLIDE_W);
     canvas.setHeight(SLIDE_H);
     canvas.add(sampleText());
-    canvas.on('object:modified', function () { post({ type: 'changed' }); });
-    canvas.on('text:changed', function () { post({ type: 'changed' }); });
+    canvas.on('object:modified', function () { saveState(); post({ type: 'changed' }); });
+    canvas.on('text:changed', function () { saveState(); post({ type: 'changed' }); });
+    canvas.on('object:added', function () { saveState(); post({ type: 'changed' }); });
     window.__canvas = canvas;
 
     console.log('Fabric ready: ' + (fabric.version || '?'));
@@ -47,7 +75,8 @@
     }
   }
 
-  function present(slides) {
+  function present(slides, transitions) {
+    transitions = transitions || [];
     var editor = document.getElementById('editor');
     var revealEl = document.getElementById('reveal');
     var slidesDiv = revealEl.querySelector('.slides');
@@ -58,12 +87,14 @@
     slides.forEach(function (s, i) {
       renderSlideToImage(s, function (url) {
         imgs[i] = url;
-        if (--pending === 0) { build(imgs); }
+        if (--pending === 0) { build(imgs, transitions); }
       });
     });
-    function build(urls) {
-      urls.forEach(function (u) {
+    function build(urls, trs) {
+      urls.forEach(function (u, i) {
         var sec = document.createElement('section');
+        var tr = trs[i] || 'none';
+        if (tr !== 'none') sec.setAttribute('data-transition', tr);
         var im = document.createElement('img');
         im.src = u; im.style.width = '100%'; im.style.height = '100%'; im.style.objectFit = 'contain';
         sec.appendChild(im); slidesDiv.appendChild(sec);
@@ -101,9 +132,17 @@
     } else if (name === 'newSlide') {
       canvas.clear(); canvas.backgroundColor = '#ffffff'; canvas.add(sampleText()); canvas.renderAll();
     } else if (name === 'present') {
-      present(data);
+      // Add transitions: data may contain { slides: [...], transitions: [...] }
+      var slides = Array.isArray(data) ? data : (data && data.slides) || [canvas.toJSON()];
+      var transitions = (data && data.transitions) || [];
+      present(slides, transitions);
     } else if (name === 'edit') {
       edit();
+    } else if (name === 'undo') {
+      undo();
+    } else if (name === 'redo') {
+      redo();
+
     } else if (name === 'renderAll') {
       var slides = (data && data.length) ? data : [canvas.toJSON()];
       var imgs = new Array(slides.length);
