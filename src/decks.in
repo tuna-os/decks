@@ -4,12 +4,21 @@
 import os
 import sys
 import signal
+import locale
+import gettext
 
 VERSION = '@VERSION@'
 pkgdatadir = '@pkgdatadir@'
 
 sys.path.insert(1, pkgdatadir)
 signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+# Set up translations
+localedir = '@localedir@'
+locale.bindtextdomain('decks', localedir)
+locale.textdomain('decks')
+gettext.bindtextdomain('decks', localedir)
+gettext.textdomain('decks')
 
 if __name__ == '__main__':
     from decks import main

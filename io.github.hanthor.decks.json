@@ -26,12 +26,20 @@
             },
             "build-commands": [
                 "pip3 install --prefix=${FLATPAK_DEST} --ignore-installed --no-warn-script-location python-pptx odfpy lxml Pillow XlsxWriter"
-            ],
-            "comment": "--ignore-installed forces lxml into /app: the Sdk ships lxml so pip would otherwise skip it, but the Platform (runtime) lacks it. Network build for the himachal pipeline; Flathub -> vendored wheels."
+            ]
         },
         {
             "name": "decks",
-            "buildsystem": "meson",
+            "buildsystem": "simple",
+            "build-options": {
+                "build-args": [ "--share=network" ]
+            },
+            "build-commands": [
+                "rm -rf subprojects/suite-common _build",
+                "git clone --depth 1 https://github.com/hanthor/suite-common.git subprojects/suite-common",
+                "meson setup --prefix=${FLATPAK_DEST} --reconfigure _build",
+                "ninja -C _build install"
+            ],
             "sources": [
                 {
                     "type": "dir",
