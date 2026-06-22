@@ -7,7 +7,7 @@ Letters pattern: **pure libadwaita chrome wrapping a `WebKit.WebView` engine**, 
 **in-process Python libraries** doing file I/O. See
 [suite-common](https://github.com/hanthor/suite-common) for the shared architecture.
 
-- **App ID:** `io.github.hanthor.decks`
+- **App ID:** `org.tunaos.decks`
 - **Runtime:** `org.gnome.Platform` 50, Flatpak
 - **Stack:** Python + PyGObject + GTK4 + libadwaita + WebKitGTK 6.0 + Blueprint
 - **License:** GPLv3-or-later (matches the suite)

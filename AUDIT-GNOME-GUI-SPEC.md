@@ -1,7 +1,7 @@
 # Decks — GNOME GUI Spec Audit
 
 **Spec:** [hanthor/gnome-gui-spec](https://github.com/hanthor/gnome-gui-spec) v0.2.0
-**App:** `io.github.hanthor.decks` — Python + PyGObject + GTK4 + libadwaita + WebKitGTK 6.0
+**App:** `org.tunaos.decks` — Python + PyGObject + GTK4 + libadwaita + WebKitGTK 6.0
 **Audit date:** 2026-06-22
 
 Decks inherits its chrome from [suite-common](https://github.com/hanthor/suite-common)

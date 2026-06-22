@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.hanthor.decks</id>
+  <id>org.tunaos.decks</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Decks</name>
@@ -13,8 +13,8 @@
       and Tables.
     </p>
   </description>
-  <launchable type="desktop-id">io.github.hanthor.decks.desktop</launchable>
-  <developer id="io.github.hanthor">
+  <launchable type="desktop-id">org.tunaos.decks.desktop</launchable>
+  <developer id="org.tunaos">
     <name>hanthor</name>
   </developer>
   <content_rating type="oars-1.1"/>

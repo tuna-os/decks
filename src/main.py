@@ -15,7 +15,7 @@ from .window import DecksWindow  # noqa: E402
 
 class DecksApplication(SuiteApplication):
     def __init__(self, version):
-        super().__init__(application_id='io.github.hanthor.decks',
+        super().__init__(application_id='org.tunaos.decks',
                          window_class=DecksWindow,
                          app_name='Decks',
                          version=version)

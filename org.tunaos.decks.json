@@ -1,5 +1,5 @@
 {
-    "id": "io.github.hanthor.decks",
+    "id": "org.tunaos.decks",
     "runtime": "org.gnome.Platform",
     "runtime-version": "50",
     "sdk": "org.gnome.Sdk",
