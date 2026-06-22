@@ -165,3 +165,18 @@ e2etest: build
 lint:
     python3 -m py_compile src/main.py
     python3 -m py_compile src/window.py
+
+# Keyboard shortcut GUI test.
+shortcuttest: build
+    #!/usr/bin/env bash
+    set -uo pipefail
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    export WAYLAND_DISPLAY="$(ls "$XDG_RUNTIME_DIR" 2>/dev/null | grep -m1 -E '^wayland-[0-9]+$' || echo wayland-0)"
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+    d="$HOME/.cache/decks-shortcut"; rm -rf "$d"; mkdir -p "$d"
+    flatpak kill io.github.hanthor.decks 2>/dev/null || true; sleep 1
+    setsid flatpak run --filesystem="$d" --env=DECKS_GUITEST="$d" io.github.hanthor.decks >/tmp/decks-shortcut.log 2>&1 &
+    sleep 10
+    python3 tests/gui/test_decks_shortcuts.py "$d"; rc=$?
+    flatpak kill io.github.hanthor.decks 2>/dev/null || true
+    exit $rc
