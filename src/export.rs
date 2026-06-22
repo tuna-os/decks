@@ -20,3 +20,13 @@ pub fn to_pdf(slides: &[crate::engine::Slide], path: &str) -> Result<(), String>
     let doc = typst::compile(&src, &world).map_err(|e| format!("{:?}", e))?;
     std::fs::write(path, &doc).map_err(|e| format!("{}", e))
 }
+
+pub fn typst_to_pdf(input: &str, output: &str) -> Result<(), String> {
+    let src = to_typst(&[]); // placeholder
+    std::fs::write(input, &src).map_err(|e| format!("{}", e))?;
+    let out = std::process::Command::new("typst")
+        .args(["compile", input, output])
+        .output()
+        .map_err(|e| format!("typst not found: {}", e))?;
+    Ok(())
+}
