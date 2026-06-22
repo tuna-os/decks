@@ -7,8 +7,8 @@ for fullscreen presentations.  Reads and writes PPTX and ODP files using
 [python-pptx](https://python-pptx.readthedocs.io/) and [odfpy](https://github.com/eea/odfpy).
 Exports to PDF via [Pillow](https://python-pillow.org/).
 
-Shares the [suite-common](https://github.com/hanthor/suite-common) scaffold with
-[Letters](https://github.com/hanthor/letters) and [Tables](https://github.com/hanthor/tables).
+Shares the [suite-common](https://github.com/tuna-os/suite-common) scaffold with
+[Letters](https://github.com/tuna-os/letters) and [Tables](https://github.com/tuna-os/tables).
 
 ## Features
 
@@ -31,7 +31,7 @@ flatpak install tuna-os org.tunaos.decks
 ## Build
 
 ```bash
-git clone https://github.com/hanthor/decks.git
+git clone https://github.com/tuna-os/decks.git
 cd decks
 just setup   # clones suite-common + vendors JS engines
 just build   # builds & installs Flatpak
