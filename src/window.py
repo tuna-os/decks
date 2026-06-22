@@ -25,6 +25,9 @@ VENDOR_ASSETS = [
 class DecksWindow(SuiteWindow):
     def __init__(self, **kwargs):
         super().__init__(app_name='Decks', use_tabs=False, **kwargs)
+        # Ensure AT-SPI accessibility: explicit role for the window so the
+        # a11y tree exposes children even with Adw.OverlaySplitView content.
+        self.set_accessible_role(Gtk.AccessibleRole.WINDOW)
         self._moduledir = os.path.dirname(__file__)
         self._selftest = os.environ.get('DECKS_SELFTEST')
         self._guitest = os.environ.get('DECKS_GUITEST')
