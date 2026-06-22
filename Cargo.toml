@@ -7,7 +7,7 @@ edition = "2021"
 gtk4 = { version = "0.9", package = "gtk4" }
 libadwaita = "0.7"
 cairo-rs = "0.20"
-ppt-rs = "0.4"
+ppt-rs = "0.2"
 
 [[bin]]
 name = "decks"
