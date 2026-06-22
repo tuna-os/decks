@@ -1,17 +1,13 @@
-// main.rs — Decks presentation app, pure Rust + gtk4-rs.
-// SPDX-License-Identifier: GPL-3.0-or-later
-
-use gtk4 as gtk;
-use gtk::prelude::*;
-
-mod window;
-
+use gtk4::prelude::*;
 fn main() {
-    let app = libadwaita::Application::new(Some("org.tunaos.decks"), Default::default());
+    let app = gtk4::Application::new(Some("org.tunaos.decks"), Default::default());
     app.connect_activate(|app| {
-        let win = window::DecksWindow::new(app);
+        let win = gtk4::ApplicationWindow::new(app);
+        win.set_title(Some("Decks"));
+        win.set_default_size(800, 600);
+        let label = gtk4::Label::new(Some("🎬 Decks — Rust native"));
+        win.set_child(Some(&label));
         win.present();
     });
     app.run();
 }
-pub mod export;
