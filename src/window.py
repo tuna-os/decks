@@ -78,6 +78,14 @@ class DecksWindow(SuiteWindow):
         split.set_content(self.webview)
         split.set_max_sidebar_width(260)
         self.set_main_content(split)
+        self._split = split
+
+        # Adaptive: collapse the slide sidebar into an overlay on narrow widths
+        # (standard GNOME OverlaySplitView pattern).
+        breakpoint_ = Adw.Breakpoint.new(
+            Adw.BreakpointCondition.parse('max-width: 600sp'))
+        breakpoint_.add_setter(split, 'collapsed', True)
+        self.add_breakpoint(breakpoint_)
 
         open_btn = Gtk.Button(label='Open')
         open_btn.connect('clicked', lambda *_: self.open_deck())
