@@ -1,42 +1,82 @@
 # Decks — GNOME GUI Spec Audit
 
-**Spec source**: https://github.com/hanthor/gnome-gui-spec (v0.2.0)
-**Framework**: Python + PyGObject + GTK 4 + libadwaita + WebKitGTK 6.0
-**App ID**: io.github.hanthor.decks
-**Audit date**: 2026-06-22
+**Spec:** [hanthor/gnome-gui-spec](https://github.com/hanthor/gnome-gui-spec) v0.2.0
+**App:** `io.github.hanthor.decks` — Python + PyGObject + GTK4 + libadwaita + WebKitGTK 6.0
+**Audit date:** 2026-06-22
 
 Decks inherits its chrome from [suite-common](https://github.com/hanthor/suite-common)
-(mirrors Letters' audited patterns) and uses an `Adw.OverlaySplitView` slide sidebar plus a
-`WebKit.WebView` Fabric.js canvas.
+(Letters' idioms: raised toolbar, responsive action toolbar, sizing, accessibility) and
+adds an `AdwOverlaySplitView` slide sidebar over a `WebKit.WebView` Fabric.js canvas.
 
-## Overall Compliance
+## 1. Widget Inventory
 
-| Area | Status | Score |
-|------|--------|-------|
-| Window Architecture | ✅ `Adw.ApplicationWindow` + `Adw.ToolbarView` + `Adw.HeaderBar` | 9/10 |
-| Navigation (Sidebar) | ✅ `Adw.OverlaySplitView` + slide `Gtk.ListBox` | 8/9 |
-| Header Bar | ✅ Open/Save/Export/Present + add-text + menu | 10/10 |
-| Toolbar | 🟡 Header actions; no responsive breakpoint | 5/7 |
-| Preferences | ✅ `Adw.PreferencesDialog` with working Dark Style row | 7/7 |
-| Dialogs | ✅ `Gtk.FileDialog`, `Adw.AboutDialog` | 7/7 |
-| Shortcuts | ✅ `Gtk.ShortcutsWindow` + Escape exits present | 7/7 |
-| Menus | ✅ Primary menu (Preferences/Shortcuts/About/Quit) | 7/7 |
-| Typography | ✅ Default libadwaita | 6/7 |
-| Spacing | ✅ Default libadwaita | 5/5 |
-| Accessibility | 🟡 Tooltips + menu accessible-label; canvas internals opaque | 5/6 |
-| Adaptive | ✅ `Adw.Breakpoint` collapses the slide sidebar on narrow widths | 4/5 |
-| Error Handling | ✅ `Adw.Toast` via `SuiteWindow.toast()` | 5/5 |
-| **Total** | | **85/92 (92%)** |
+### Adw
+| Widget | Where |
+|---|---|
+| `AdwApplicationWindow` | suite_common/window.py |
+| `AdwToolbarView` (`top-bar-style: raised`) | suite_common/window.py |
+| `AdwHeaderBar` | suite_common/window.py |
+| `AdwOverlaySplitView` (slide sidebar) | decks window.py |
+| `AdwBreakpoint` ×2 (sidebar 600sp; action bar 500sp) | decks + suite_common |
+| `AdwToastOverlay` | suite_common/window.py |
+| `AdwPreferencesDialog` + `SwitchRow` | suite_common/dialogs.py |
+| `AdwAboutDialog`, `AdwStyleManager` | suite_common |
 
-## Notes
-- **Met via suite-common**: window architecture, header bar, preferences (with a working
-  Dark Style toggle), shortcuts, menus, toast error handling, accessible menu label.
-- **App-specific**: slide sidebar with add/delete/reorder, Fabric.js editing canvas,
-  Reveal.js present mode (Escape to exit), PDF export, pptx/odp I/O via `fileio.py`.
-- **Adaptive**: the `Adw.OverlaySplitView` collapses to an overlay under 600sp — the
-  standard GNOME narrow-window pattern — reaching parity with Letters' baseline.
-- **Packaging**: `.desktop`, AppStream `metainfo.xml`, and a scalable app icon are installed.
+### Gtk
+| Widget | Where |
+|---|---|
+| `GtkButton` (open/save/export/present + tools) | decks window.py |
+| `GtkMenuButton` (primary, `more`) | suite_common/window.py |
+| `GtkListBox` (slide list, `.navigation-sidebar`) | decks window.py |
+| `GtkScrolledWindow`, `GtkBox` (`.toolbar`) | decks / suite_common |
+| `GtkEventControllerKey` (Escape exits present) | decks window.py |
+| `GtkShortcutsWindow`, `GtkFileDialog` | suite_common / decks |
 
-## Remaining gaps (tracked follow-ups)
-- Responsive toolbar breakpoint for the header actions → Toolbar 5→7.
-- Accessibility bridging into the WebKit canvas → Accessibility 5→6.
+## 2. Checklist Compliance (§14)
+
+**Architecture** — ✅ `AdwApplication`+`AdwApplicationWindow`; ✅ single window;
+✅ adaptive (min 296×360; two breakpoints).
+
+**Header Bar** — ✅ centred title; ✅ primary [start] / menu [end]; ✅ tooltips on all buttons;
+✅ flat; ✅ `<control>comma` → Preferences.
+
+**Navigation** — ✅ one pattern (slide sidebar via `AdwOverlaySplitView`, collapses ≤600sp).
+
+**Preferences** — ✅ `AdwPreferencesDialog`; ✅ `search-enabled`; ✅ `AdwSwitchRow` (Dark Style);
+🟡 not GSettings-backed.
+
+**Feedback** — ✅ toasts; 🟡 no undo-toast; 🟡 no empty-state `AdwStatusPage`.
+
+**Styling** — ✅ system light/dark + toggle; ✅ symbolic icons; ✅ `.toolbar`/`.navigation-sidebar`
+CSS; 🟡 typography classes not explicitly applied (canvas-rendered slides).
+
+**Accessibility** — ✅ `AccessibleProperty.LABEL` + tooltips on all buttons, menu, window;
+🟡 the Fabric canvas internals aren't bridged to AT-SPI.
+
+## 3. Anti-pattern check (§13)
+None present: `AdwApplicationWindow`/`AdwHeaderBar`, `AdwPreferencesDialog`, toasts,
+in-window navigation (`AdwOverlaySplitView`), symbolic icons, header tooltips, menu access keys.
+
+## 4. Score
+
+| Area | Score |
+|---|---|
+| Architecture | 10/10 |
+| Header Bar | 10/10 |
+| Navigation (sidebar) | 9/9 |
+| Toolbar (responsive action bar) | 7/7 |
+| Preferences | 6/7 (no GSettings) |
+| Dialogs | 7/7 |
+| Shortcuts | 7/7 |
+| Menus | 7/7 |
+| Typography | 6/7 |
+| Spacing | 5/5 |
+| Accessibility | 5/6 (canvas) |
+| Adaptive | 5/5 (two breakpoints) |
+| Feedback | 4/5 (no undo/empty-state) |
+| **Total** | **88/92 (96%)** |
+
+## 5. Findings / follow-ups
+1. GSettings-back preferences (Preferences 6→7).
+2. Empty-state `AdwStatusPage` for a fresh deck (Feedback 4→5).
+3. AT-SPI bridging for the Fabric canvas (Accessibility 5→6).
