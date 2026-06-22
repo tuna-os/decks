@@ -124,5 +124,19 @@ pdftest: build
         echo "PDFTEST: PASS ($(wc -c <"$d/out.pdf") bytes, valid PDF header)"; rm -rf "$d"
     else echo "PDFTEST: FAIL"; exit 1; fi
 
+# Dogtail GUI test (AT-SPI): launch the Flatpak and drive it from the host.
+guitest: build
+    #!/usr/bin/env bash
+    set -uo pipefail
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    export WAYLAND_DISPLAY="$(ls "$XDG_RUNTIME_DIR" 2>/dev/null | grep -m1 -E '^wayland-[0-9]+$' || echo wayland-0)"
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+    flatpak kill {{app_id}} 2>/dev/null || true; sleep 1
+    setsid flatpak run {{app_id}} >/tmp/decks-gui.log 2>&1 &
+    sleep 8
+    python3 tests/gui/test_decks.py; rc=$?
+    flatpak kill {{app_id}} 2>/dev/null || true
+    exit $rc
+
 clean:
     rm -rf subprojects/suite-common "$HOME/.cache/decks-flatpak"

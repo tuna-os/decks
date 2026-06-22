@@ -65,6 +65,7 @@ class DecksWindow(SuiteWindow):
         ):
             btn = Gtk.Button(icon_name=icon)
             btn.set_tooltip_text(tip)
+            btn.update_property([Gtk.AccessibleProperty.LABEL], [tip])
             btn.connect('clicked', cb)
             controls.append(btn)
 
@@ -87,24 +88,19 @@ class DecksWindow(SuiteWindow):
         breakpoint_.add_setter(split, 'collapsed', True)
         self.add_breakpoint(breakpoint_)
 
-        open_btn = Gtk.Button(label='Open')
-        open_btn.connect('clicked', lambda *_: self.open_deck())
-        self.header_bar.pack_start(open_btn)
+        def header_btn(widget, label, callback):
+            widget.set_tooltip_text(label)
+            widget.update_property([Gtk.AccessibleProperty.LABEL], [label])
+            widget.connect('clicked', callback)
+            self.header_bar.pack_start(widget)
 
-        save_btn = Gtk.Button(icon_name='document-save-symbolic')
-        save_btn.set_tooltip_text('Save')
-        save_btn.connect('clicked', lambda *_: self.save_deck())
-        self.header_bar.pack_start(save_btn)
-
-        export_btn = Gtk.Button(icon_name='document-send-symbolic')
-        export_btn.set_tooltip_text('Export to PDF')
-        export_btn.connect('clicked', lambda *_: self.export_pdf())
-        self.header_bar.pack_start(export_btn)
-
-        present_btn = Gtk.Button(icon_name='view-fullscreen-symbolic')
-        present_btn.set_tooltip_text('Present')
-        present_btn.connect('clicked', lambda *_: self.present())
-        self.header_bar.pack_start(present_btn)
+        header_btn(Gtk.Button(label='Open'), 'Open', lambda *_: self.open_deck())
+        header_btn(Gtk.Button(icon_name='document-save-symbolic'), 'Save',
+                   lambda *_: self.save_deck())
+        header_btn(Gtk.Button(icon_name='document-send-symbolic'), 'Export to PDF',
+                   lambda *_: self.export_pdf())
+        header_btn(Gtk.Button(icon_name='view-fullscreen-symbolic'), 'Present',
+                   lambda *_: self.present())
 
         # Letters idiom: a centered tools toolbar with a responsive extended/more split.
         def tool(icon, label, message):
